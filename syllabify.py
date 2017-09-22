@@ -2,20 +2,29 @@
 import numpy as np
 import pandas as pd
 import re
+import logging
 
-#df = pd.read_csv("cmudict.txt", delimiter="\n", header=None, quoting=3, comment="#", names=["dict"])
-df = pd.read_csv("cmusubset.txt", delimiter="\n", header=None, names=["dict"])
-df = df[df['dict'].str.contains(r"[^A-Z0-2 ]") == False]
-df = df['dict'].str.extract(r"(?P<word>\w+) (?P<transcription>.+)", expand=True)
+logging.basicConfig(filename = 'syllabifier.log',level = logging.WARNING)
 
-vowelsregex = re.compile(r'(?:AA|AE|AH|AO|AW|AY|EH|ER|EY|IH|IY|OW|OY|UW|UH)[012]')
-
-df['transcriptionsplit'] = df['transcription'].str.split()
+# Sets required to check for valid onset and coda clusters
+voiceless = set(['K', 'P', 'T', 'F', 'HH', 'S', 'SH', 'TH', 'CH'])
+voiced = set(['G', 'B', 'D', 'DH', 'V', 'Z', 'ZH', 'JH'])
+stops = set(['K', 'P', 'T', 'G', 'B', 'D'])
+fricatives = set(['F', 'DH', 'HH', 'S', 'SH', 'TH', 'V', 'Z', 'ZH'])
+affricates = set(['CH', 'JH'])
+nasals = set(['M', 'N', 'NG'])
+approximants = set(['L', 'R', 'W', 'Y'])
+consonants = stops.union(fricatives).union(affricates).union(nasals).union(approximants)
+# Optional stress markers (0,1,2) after the vowel for flexibility
+vowelsregex = re.compile(r'(?:AA|AE|AH|AO|AW|AY|EH|ER|EY|IH|IY|OW|OY|UW|UH)[012]?')
 
 def syllabifyARPA(arpa_arr):
 
     final_arr = []
     temp_arr = []
+    valid = True
+
+    word = ' '.join(arpa_arr)
 
     # Append till and including vowels
     for i in range(len(arpa_arr)):
@@ -27,88 +36,101 @@ def syllabifyARPA(arpa_arr):
     # Handle potential remaining coda consonants
     for i in range(len(temp_arr)):
         if len(final_arr) < 1:
-            print("Input error - no vowel. Transcription /", ' '.join(arpa_arr), "/ cannot be syllabified.")
+            logging.warning('Input error - no vowel in %s' % word)
             return None
         final_arr[-1].append(temp_arr[i])
 
     # All onsets are maximized, some are illegal - fixing that
     for i in range(len(final_arr)):
-        c = testLegalOnset(final_arr[i])
-        if c:
-            print("There is a bad onset cluster in /", ' '.join(final_arr[i]), "/.")
+        while testLegalOnset(final_arr[i]):
+            if i == 0:
+                logging.warning('Bad onset cluster in %s' % word)
+                valid = False
+            c = testLegalOnset(final_arr[i])
+            final_arr[i].remove(c)
+            final_arr[i-1].append(c)
 
+    '''for i in range(len(final_arr)):
+        testLegalCoda(final_arr[i], final_arr)'''
+
+    if not valid:
+        return None
     return [' '.join(syllable) for syllable in final_arr]
 
 def testLegalOnset(syllable):
-
+    cluster = []
 
     for i in range(len(syllable)):
-        c = syllable[i]
-        if re.match(vowelsregex, c):
-            return None
+        if re.match(vowelsregex, syllable[i]):
+            break
         else:
-            
+            cluster.append(syllable[i])
 
-df['syllables'] = df['transcriptionsplit'].apply(syllabifyARPA)
-df.dropna(inplace=True)
+    length = len(cluster)
+    if length > 3:
+        return cluster[0]
 
-plosives = set(['B', 'D', 'G', 'K', 'P', 'T'])
-fricatives = set(['F', 'DH', 'HH', 'S', 'SH', 'TH', 'V', 'Z', 'ZH'])
-"""
-F	fee	F IY
-DH	thee	DH IY
-HH	he	HH IY
-S	sea	S IY
-SH	she	SH IY
-TH	theta	TH EY T AH
-V	vee	V IY
-Z	zee	Z IY
-ZH	seizure	S IY ZH ER
+    elif length == 3:
+        # Only s-clusters can be length 3
+        if not (cluster[0] == 'S'):
+            return cluster[0]
+        # Clusters beginning with s can only be of the forms
+        # s-voiceless_stop-approximant or s-voiceless_fricative-r
+        elif not (
+        (cluster[1] in voiceless.intersection(stops) and cluster[2] in approximants)
+            or
+        (cluster[1] in voiceless.intersection(fricatives) and cluster[2] == 'R')):
+            return cluster[0]
 
-CH	cheese	CH IY Z
-JH	gee	JH IY
+    elif length == 2:
+        if not (
+        # Valid length-2 consonant clusters are consonant-Y, stop-approximant
+        # and voiceless_fricative_or_V-approximant
+        (cluster[0] in consonants and cluster[1] == 'Y')
+            or
+        (cluster[0] in stops and cluster[1] in approximants)
+            or
+        (cluster[0] in voiceless.intersection(fricatives).union(['V']) and
+        cluster[1] in approximants)
+            or
+        # Only s-voiceless_stop, s-voiceless_fricative and s-non_NG_nasals
+        # are valid length-2 s-clusters
+        (cluster[0] == 'S' and cluster[1] in voiceless.difference(affricates))
+            or
+        (cluster[0] == 'S' and cluster[1] in nasals.difference(['NG']))
+            or
+        # Other clusters normalized through loanwords, e.g. SH-N, S-V, NW, MR
+        (cluster[0] == 'SH' and cluster[1] in nasals and cluster != 'NG')
+            or
+        (cluster[0] == 'S' and cluster[1] == 'V')
+            or
+        (cluster[0] == 'M' and cluster[1] in approximants)
+            or
+        (cluster[0] == 'N' and cluster[1] == 'W')
+        ):
+            return cluster[0]
 
-M	me	M IY
-N	knee	N IY
-NG	ping	P IY NG
+    elif length == 1 and cluster[0] == 'NG':
+        # Single-consonant-onsets are valid except for NG
+        return cluster[0]
 
-L	lee	L IY
+    return None
 
-R	read	R IY D
+def main():
+    df = pd.read_csv('cmudict.txt', delimiter='\n', header=None, quoting=3, comment='#', names=['dict'])
+    #df = pd.read_csv('cmusubset.txt', delimiter='\n', header=None, names=['dict']) # For testing
 
-W	we	W IY
-Y	yield	Y IY L D
-"""
+    # Removing all rows containing non-alphanumeric characters and spaces
+    df = df[df['dict'].str.contains(r'[^A-Z0-2 ]') == False]
+    df = df['dict'].str.extract(r'(?P<word>\w+) (?P<transcription>.+)', expand=True)
+    df['transcription'] = df['transcription'].str.split()
 
-All single consonant phonemes except /ŋ/
+    df['syllables'] = df['transcription'].apply(syllabifyARPA)
+    #df['length'] = df['syllables'].str.length()
+    df.dropna(inplace=True)
 
-Stop plus approximant other than /j/:
-/pl/, /bl/, /kl/, /ɡl/, /pr/, /br/, /tr/,[1] /dr/,[1] /kr/, /ɡr/, /tw/, /dw/, /ɡw/, /kw/, /pw/
-	play, blood, clean, glove, prize, bring, tree,[1] dream,[1] crowd, green, twin, dwarf, language, quick, puissance
 
-Voiceless fricative or /v/ plus approximant other than /j/:[2]
-/fl/, /sl/, /θl/,[3] /fr/, /θr/, /ʃr/, /hw/,[4] /sw/, /θw/, /vw/
-	floor, sleep, thlipsis,[3] friend, three, shrimp, what,[4] swing, thwart, reservoir
+    print(df.head(10))
 
-Consonant plus /j/ (before /uː/ or its modified/reduced forms[5]):
-/pj/, /bj/, /tj/,[5] /dj/,[5] /kj/, /ɡj/, /mj/, /nj/,[5] /fj/, /vj/, /θj/,[5] /sj/,[5] /zj/,[5] /hj/, /lj/[5]
-	pure, beautiful, tube,[5] during,[5] cute, argue, music, new,[5] few, view, thew,[5] suit,[5] Zeus,[5] huge, lurid[5]
-
-/s/ plus voiceless stop:[6]
-/sp/, /st/, /sk/
-	speak, stop, skill
-
-/s/ plus nasal other than /ŋ/:[6]
-/sm/, /sn/
-	smile, snow
-
-/s/ plus voiceless fricative:[3]
-/sf/, /sθ/
-	sphere, sthenic
-
-/s/ plus voiceless stop plus approximant:[6]
-/spl/, /skl/,[3] /spr/, /str/, /skr/, /skw/, /smj/, /spj/, /stj/,[5] /skj/
-	split, sclera, spring, street, scream, square, smew, spew, student,[5] skewer
-
-/s/ plus voiceless fricative plus approximant:[3]
-/sfr/
+if __name__ == '__main__':
+    main()
