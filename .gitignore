@@ -1,2 +1,9 @@
 # Log file
 syllabifier.log
+
+# Python cache
+__pycache__
+
+# Jupyter-notebook stuff for quick testing
+.ipynb_checkpoints
+test.ipynb

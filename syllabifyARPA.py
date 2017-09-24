@@ -1,5 +1,3 @@
-#import nltk
-import numpy as np
 import pandas as pd
 import re
 import logging
@@ -20,11 +18,11 @@ vowelsregex = re.compile(r'(?:AA|AE|AH|AO|AW|AY|EH|ER|EY|IH|IY|OW|OY|UW|UH)[012]
 
 def syllabifyARPA(arpa_arr):
 
+    word = ' '.join(arpa_arr)
+
     final_arr = []
     temp_arr = []
     valid = True
-
-    word = ' '.join(arpa_arr)
 
     # Append till and including vowels
     for i in range(len(arpa_arr)):
@@ -37,7 +35,7 @@ def syllabifyARPA(arpa_arr):
     for i in range(len(temp_arr)):
         if len(final_arr) < 1:
             logging.warning('Input error - no vowel in %s' % word)
-            return None
+            return pd.Series(None)
         final_arr[-1].append(temp_arr[i])
 
     # All onsets are maximized, some are illegal - fixing that
@@ -50,12 +48,15 @@ def syllabifyARPA(arpa_arr):
             final_arr[i].remove(c)
             final_arr[i-1].append(c)
 
-    '''for i in range(len(final_arr)):
-        testLegalCoda(final_arr[i], final_arr)'''
+    for i in range(len(final_arr)):
+        if not testLegalCoda(final_arr[i]):
+            logging.error('Impossible to syllabify %s according to English '
+                          'syllabification rules.' % word)
+            valid = False
 
     if not valid:
-        return None
-    return [' '.join(syllable) for syllable in final_arr]
+        return pd.Series(None)
+    return pd.Series([' '.join(syllable) for syllable in final_arr])
 
 def testLegalOnset(syllable):
     cluster = []
@@ -67,6 +68,7 @@ def testLegalOnset(syllable):
             cluster.append(syllable[i])
 
     length = len(cluster)
+
     if length > 3:
         return cluster[0]
 
@@ -106,8 +108,7 @@ def testLegalOnset(syllable):
             or
         (cluster[0] == 'M' and cluster[1] in approximants)
             or
-        (cluster[0] == 'N' and cluster[1] == 'W')
-        ):
+        (cluster[0] == 'N' and cluster[1] == 'W')):
             return cluster[0]
 
     elif length == 1 and cluster[0] == 'NG':
@@ -116,21 +117,16 @@ def testLegalOnset(syllable):
 
     return None
 
-def main():
-    df = pd.read_csv('cmudict.txt', delimiter='\n', header=None, quoting=3, comment='#', names=['dict'])
-    #df = pd.read_csv('cmusubset.txt', delimiter='\n', header=None, names=['dict']) # For testing
+def testLegalCoda(syllable):
+    cluster = []
 
-    # Removing all rows containing non-alphanumeric characters and spaces
-    df = df[df['dict'].str.contains(r'[^A-Z0-2 ]') == False]
-    df = df['dict'].str.extract(r'(?P<word>\w+) (?P<transcription>.+)', expand=True)
-    df['transcription'] = df['transcription'].str.split()
+    postvowel = False
+    for i in range(len(syllable)):
+        if postvowel:
+            cluster.append(syllable[i])
+        if re.match(vowelsregex, syllable[i]):
+            postvowel = True
 
-    df['syllables'] = df['transcription'].apply(syllabifyARPA)
-    #df['length'] = df['syllables'].str.length()
-    df.dropna(inplace=True)
+    # TODO: Code this
 
-
-    print(df.head(10))
-
-if __name__ == '__main__':
-    main()
+    return True
