@@ -4,6 +4,5 @@ syllabifier.log
 # Python cache
 __pycache__
 
-# Jupyter-notebook stuff for quick testing
+# Jupyter-notebook checkpoints
 .ipynb_checkpoints
-test.ipynb
