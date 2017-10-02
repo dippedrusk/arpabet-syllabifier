@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+#
+#
+#
+#
+
 import pandas as pd
 import re
 import logging
@@ -16,21 +22,35 @@ APPROXIMANTS = set(['L', 'R', 'W', 'Y'])
 CONSONANTS = STOPS.union(FRICATIVES).union(AFFRICATES).union(NASALS).union(APPROXIMANTS)
 
 S_EXTENDED_CODAS = set(['K', 'P', 'T', 'F', 'TH'])
-Z_EXTENDED_CODAS = set(['G', 'B', 'D', 'DH', 'V', 'M', 'N', 'NG', ])
+Z_EXTENDED_CODAS = set(['G', 'B', 'D', 'DH', 'V', 'M', 'N', 'NG', 'L'])
 
-T_EXTENDED_CODAS = set(['K', 'P', 'F', 'S', 'SH', 'TH', 'CH'])
-D_EXTENDED_CODAS = set(['G', 'B', 'DH', 'V', 'Z', 'ZH', 'JH'])
+T_EXTENDED_CODAS = set(['K', 'P', 'F', 'S', 'SH', 'TH', 'CH', 'N'])
+D_EXTENDED_CODAS = set(['G', 'B', 'DH', 'V', 'Z', 'ZH', 'JH', 'M', 'N', 'NG'])
+
+PHONESET = set(['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B',
+                'CH', 'D', 'DH', 'EH', 'ER', 'EY', 'F', 'G',
+                'HH', 'IH', 'IY', 'JH', 'K', 'L', 'M', 'N',
+                'NG', 'OW', 'OY', 'P', 'R', 'S', 'SH', 'T',
+                'TH', 'UH', 'UW', 'V', 'W', 'Y', 'Z', 'ZH'])
 
 # Optional stress markers (0,1,2) after the vowel for flexibility
 VOWELS_REGEX = re.compile(r'(?:AA|AE|AH|AO|AW|AY|EH|ER|EY|IH|IY|OW|OY|UW|UH)[012]?')
 
 def syllabifyARPA(arpa_arr):
 
+    try:
+        arpa_arr = arpa_arr.split() # Allows for phoneme array and string input
+    except:
+        pass
+
     word = ' '.join(arpa_arr)
+
+    if not (testInPhoneset(arpa_arr)):
+        logging.critical('Input %s contains non-ARPABET phonemes' % word)
+        return pd.Series(None)
 
     final_arr = []
     temp_arr = []
-    valid = True
 
     # Append till and including vowels
     for i in range(len(arpa_arr)):
@@ -51,7 +71,7 @@ def syllabifyARPA(arpa_arr):
         while testLegalOnset(final_arr[i]):
             if i == 0:
                 logging.warning('Bad onset cluster in %s' % word)
-                valid = False
+                return pd.Series(None)
             c = testLegalOnset(final_arr[i])
             final_arr[i].remove(c)
             final_arr[i-1].append(c)
@@ -60,11 +80,15 @@ def syllabifyARPA(arpa_arr):
         if not testLegalCoda(final_arr[i]):
             logging.error('Impossible to syllabify %s according to English '
                           'syllabification rules.' % word)
-            valid = False
+            return pd.Series(None)
 
-    if not valid:
-        return pd.Series(None)
     return pd.Series([' '.join(syllable) for syllable in final_arr])
+
+def testInPhoneset(arr):
+    for i in range(len(arr)):
+        if not (arr[i] in PHONESET or re.match(VOWELS_REGEX, arr[i])):
+            return False
+    return True
 
 def testLegalOnset(syllable):
     cluster = []
@@ -137,8 +161,6 @@ def testLegalCoda(syllable):
 
     length = len(cluster)
 
-    # TODO: Code this
-
     if length == 0:
         return True
 
@@ -154,12 +176,7 @@ def testLegalCoda(syllable):
         else:
             return False
 
-    elif length == 1:
-        # These phonemes cannot exist as codas by themselves
-        if cluster[0] in set(['HH', 'W', 'Y']):
-            return False
-
-    if length == 3: # if instead of elif to allow checking of s-appended clusters
+    if length == 3: # if instead of elif to check s-, z-, t-, d-appended clusters
         if ((cluster[2] == 'S' and cluster[1] in S_EXTENDED_CODAS)
             or
         (cluster[2] == 'Z' and cluster[1] in Z_EXTENDED_CODAS)
@@ -169,7 +186,7 @@ def testLegalCoda(syllable):
         (cluster[2] == 'D' and cluster[1] in D_EXTENDED_CODAS)):
             length -= 1
 
-        elif cluster[0] == 'L' and not (
+        elif cluster[0] == 'L' and (
         (cluster[1] == 'P' and cluster[2] == 'T')
             or
         (cluster[1] == 'P' and cluster[2] == 'S')
@@ -183,9 +200,9 @@ def testLegalCoda(syllable):
         (cluster[1] == 'K' and cluster[2] == 'S')
             or
         (cluster[1] == 'S' and cluster[2] == 'T')):
-            return False
+            return True
 
-        elif cluster[0] == 'R' and not (
+        elif cluster[0] == 'R' and (
         (cluster[1] == 'P' and cluster[2] == 'T')
             or
         (cluster[1] == 'P' and cluster[2] == 'S')
@@ -197,54 +214,93 @@ def testLegalCoda(syllable):
         (cluster[1] == 'K' and cluster[2] == 'T')
             or
         (cluster[1] == 'S' and cluster[2] == 'T')):
-            return False
+            return True
 
-        elif cluster[0] == 'M' and not (
+        elif cluster[0] == 'M' and (
         (cluster[1] == 'P' and cluster[2] == 'T')
             or
         (cluster[1] == 'P' and cluster[2] == 'S')):
-            return False
+            return True
 
-        elif cluster[0] == 'N' and not (
+        elif cluster[0] == 'N' and (
         (cluster[1] == 'D' and cluster[2] == 'TH')):
-            return False
+            return True
 
-        elif cluster[0] == 'NG' and not (
+        elif cluster[0] == 'NG' and (
         (cluster[1] == 'K' and cluster[2] == 'T')
             or
         (cluster[1] == 'K' and cluster[2] == 'S')
             or
-        (cluster[1] == 'K' and cluster[2] == 'TH')):
-            return False
+        (cluster[1] == 'K' and cluster[2] == 'TH')
+            or
+        (cluster[1] == 'S' and cluster[2] == 'T')):
+            return True
 
-        elif not (
+        elif (
         (cluster[0] == 'K' and cluster[1] == 'S' and cluster[2] == 'TH')
             or
         (cluster[0] == 'K' and cluster[1] == 'S' and cluster[2] == 'T')):
-            return False
+            return True
 
-    if length == 2: # if instead of elif to allow checking of s-appended clusters
-        return True
+    if length == 2: # if instead of elif to check s-, z-, t-, d-appended clusters
+        if ((cluster[1] == 'S' and cluster[0] in S_EXTENDED_CODAS)
+            or
+        (cluster[1] == 'Z' and cluster[0] in Z_EXTENDED_CODAS)
+            or
+        (cluster[1] == 'T' and cluster[0] in T_EXTENDED_CODAS)
+            or
+        (cluster[1] == 'D' and cluster[0] in D_EXTENDED_CODAS)):
+            length -= 1
 
-    return True
+        if cluster[0] == 'L' and (
+        cluster[1] in STOPS.difference(['G'])
+            or
+        cluster[1] in AFFRICATES
+            or
+        cluster[1] in set(['F', 'S', 'SH', 'TH', 'V'])
+            or
+        cluster[1] in NASALS.difference(['NG'])):
+            return True
 
-"""
-STOPS = set(['K', 'P', 'T', 'G', 'B', 'D'])
-FRICATIVES = set(['F', 'DH', 'HH', 'S', 'SH', 'TH', 'V', 'Z', 'ZH'])
-AFFRICATES = set(['CH', 'JH'])
-NASALS = set(['M', 'N', 'NG'])
-APPROXIMANTS = set(['L', 'R', 'W', 'Y'])
+        elif cluster[0] == 'R' and (
+        cluster[1] in STOPS
+            or
+        cluster[1] in AFFRICATES
+            or
+        cluster[1] in set(['F', 'S', 'SH', 'TH', 'V', 'Z'])
+            or
+        cluster[1] in NASALS.difference(['NG'])
+            or
+        cluster[1] == 'L'):
+            return True
 
-Lateral approximant plus stop or affricate: /lp/, /lb/, /lt/, /ld/, /ltʃ/, /ldʒ/, /lk/ 	help, bulb, belt, hold, belch, indulge, milk
-In rhotic varieties, /r/ plus stop or affricate: /rp/, /rb/, /rt/, /rd/, /rtʃ/, /rdʒ/, /rk/, /rɡ/ 	harp, orb, fort, beard, arch, large, mark, morgue
-Lateral approximant + fricative: /lf/, /lv/, /lθ/, /ls/, /lʃ/ 	golf, solve, wealth, else, Welsh
-In rhotic varieties, /r/ + fricative: /rf/, /rv/, /rθ/, /rs/, /rz/, /rʃ/ 	dwarf, carve, north, force, Mars, marsh
-Lateral approximant + nasal: /lm/, /ln/ 	film, kiln
-In rhotic varieties, /r/ + nasal or lateral: /rm/, /rn/, /rl/ 	arm, born, snarl
-Nasal + homorganic stop or affricate: /mp/, /nt/, /nd/, /ntʃ/, /ndʒ/, /ŋk/ 	jump, tent, end, lunch, lounge, pink
-Nasal + fricative: /mf/, /mθ/, /nθ/, /ns/, /nz/, /ŋθ/ in some varieties 	triumph, warmth, month, prince, bronze, length
-Voiceless fricative plus voiceless stop: /ft/, /sp/, /st/, /sk/ 	left, crisp, lost, ask
-Two voiceless fricatives: /fθ/ 	fifth
-Two voiceless stops: /pt/, /kt/ 	opt, act
-Stop plus voiceless fricative: /pθ/, /ps/, /tθ/, /ts/, /dθ/, /ks/ 	depth, lapse, eighth, klutz, width, box
-"""
+        elif cluster[0] == 'M' and cluster[1] in set(['P', 'F', 'TH', 'B']):
+            return True
+
+        elif cluster[0] == 'N' and cluster[1] in set(['T', 'D', 'CH', 'JH', 'TH', 'S', 'Z', 'F']):
+            return True
+
+        elif cluster[0] == 'NG' and cluster[1] in set(['K', 'TH', 'G']):
+            return True
+
+        elif (
+        (cluster[0] == 'F' and cluster[1] in set(['T', 'TH']))
+            or
+        (cluster[0] == 'S' and cluster[1] in set(['P', 'T', 'K']))
+            or
+        (cluster[0] == 'P' and cluster[1] in set(['T', 'TH', 'S']))
+            or
+        (cluster[0] == 'K' and cluster[1] in set(['T', 'S']))
+            or
+        (cluster[0] == 'T' and cluster[1] in set(['S', 'TH']))
+            or
+        (cluster[0] == 'D' and cluster[1] == 'TH')):
+            return True
+
+    if length == 1:
+        # These phonemes cannot exist as codas by themselves
+        if cluster[0] not in set(['HH', 'W', 'Y']):
+            return True
+
+    print(cluster)
+    return False
