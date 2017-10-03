@@ -2,13 +2,14 @@
 
 # syllabifyARPA:
 # Syllabify ARPABET transcriptions using General American English syllabification rules
+# as found in https://en.wikipedia.org/wiki/English_phonology#Syllable_structure
 
 # Vasundhara Gautam
 # October 3rd, 2017
 
 import pandas as pd
 import re
-import logging
+import sys
 
 # Sets required to check for valid onset and coda clusters
 VOICELESS = set(['K', 'P', 'T', 'F', 'HH', 'S', 'SH', 'TH', 'CH'])
@@ -42,9 +43,10 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
     syllabification rules.
 
     Args:
-        arpa_arr: A string or array of ARPABET phones.
+        arpa_arr: A string or array of ARPABET phones with optional stress markers
+        on the vowels.
         return_list: Boolean (default False) to return list of syllable strings
-        silence_warnings: Boolean (default False) to suppress printing to stderr
+        silence_warnings: Boolean (default False) to suppress ValueErrors
 
     Returns:
         Pandas Series of dtype 'Object' with syllables in each row.
@@ -54,16 +56,13 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
         returned.
 
     Raises:
-        Critical error: Input contains non-ARPABET phonemes.
-        Warning: Clusters with no vowels or bad onsets.
-        Error: Impossible to syllabify according to English rules.
+        ValueError if input contains non-ARPABET phonemes, no vowels or if it
+        cannot be syllabified according to English syllabification rules.
     """
 
-
-    logging.basicConfig()
-
-    if silence_warnings:
-        logging.raiseExceptions=False
+    def handleError(string):
+        if not silence_warnings:
+            raise ValueError(string)
 
     ret = pd.Series(None)
     if return_list:
@@ -80,7 +79,7 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
     word = ' '.join(arpa_arr)
 
     if not (testInPhoneset(arpa_arr)):
-        logging.critical('Input %s contains non-ARPABET phonemes' % word)
+        handleError('Input %s contains non-ARPABET phonemes' % word)
         return ret
 
     final_arr = []
@@ -96,7 +95,7 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
     # Handle potential remaining coda consonants
     for i in range(len(temp_arr)):
         if len(final_arr) < 1:
-            logging.warning('Input error - no vowel in %s' % word)
+            handleError('Input error - no vowel in %s' % word)
             return ret
         final_arr[-1].append(temp_arr[i])
 
@@ -104,7 +103,7 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
     for i in range(len(final_arr)):
         while testLegalOnset(final_arr[i]):
             if i == 0:
-                logging.warning('Bad onset cluster in %s' % word)
+                handleError('Bad onset cluster in %s' % word)
                 return ret
             c = testLegalOnset(final_arr[i])
             final_arr[i].remove(c)
@@ -112,7 +111,7 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
 
     for i in range(len(final_arr)):
         if not testLegalCoda(final_arr[i]):
-            logging.error('Impossible to syllabify %s according to English '
+            handleError('Impossible to syllabify %s according to English '
                           'syllabification rules.' % word)
             return ret
 
@@ -123,12 +122,35 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
     return ret
 
 def testInPhoneset(arr):
+    """
+    Tests if input consists of 2-letter ARPABET phonemes. Does not require stress
+    markers on the vowels.
+
+    Args:
+        arr: An array of strings
+
+    Returns:
+        True if input array consists of 2-letter ARPABET phones with optional
+        stress markers.
+    """
     for i in range(len(arr)):
         if not (arr[i] in PHONESET or re.match(VOWELS_REGEX, arr[i])):
             return False
     return True
 
 def testLegalOnset(syllable):
+    """
+    Function to test for legal onset clusters.
+
+    Args:
+        syllable: An array of phones in a transcription containing a vowel
+
+    Returns:
+        None if the input's onset is legal. Otherwise, returns the first
+        phone of the onset for removal and subsequent appendage to the previous
+        syllable's coda.
+    """
+
     cluster = []
 
     for i in range(len(syllable)):
@@ -188,6 +210,17 @@ def testLegalOnset(syllable):
     return None
 
 def testLegalCoda(syllable):
+    """
+    Function to test for legal coda clusters.
+
+    Args:
+        syllable: An array of phones in a transcription containing a vowel
+
+    Returns:
+        True if the coda cluster (phones after the vowel in the syllable) is
+        legal according to English syllabification rules.
+    """
+
     cluster = []
 
     postvowel = False
@@ -202,11 +235,12 @@ def testLegalCoda(syllable):
     if length == 0:
         return True
 
+    # English disallows 5+ length coda clusters
     elif length > 4:
         return False
 
     elif length == 4:
-        # 4-phoneme codas have to have /s/ or /z/ as an appendix
+        # 4-phoneme codas must have /s/, /z/, /t/ or /d/ at the end
         if ((cluster[3] == 'S' and cluster[2] in S_EXTENDED_CODAS)
             or
         (cluster[3] == 'Z' and cluster[2] in Z_EXTENDED_CODAS)
@@ -218,7 +252,9 @@ def testLegalCoda(syllable):
         else:
             return False
 
-    if length == 3: # if instead of elif to check s-, z-, t-, d-appended clusters
+    # if instead of elif to check s-, z-, t-, d-appended clusters
+
+    if length == 3:
         if ((cluster[2] == 'S' and cluster[1] in S_EXTENDED_CODAS)
             or
         (cluster[2] == 'Z' and cluster[1] in Z_EXTENDED_CODAS)
@@ -228,6 +264,7 @@ def testLegalCoda(syllable):
         (cluster[2] == 'D' and cluster[1] in D_EXTENDED_CODAS)):
             length -= 1
 
+        # 3-phone clusters beginning with L, e.g., Alps, milked
         elif cluster[0] == 'L' and (
         (cluster[1] == 'P' and cluster[2] == 'T')
             or
@@ -244,6 +281,7 @@ def testLegalCoda(syllable):
         (cluster[1] == 'S' and cluster[2] == 'T')):
             return True
 
+        # 3-phone clusters beginning with R, e.g., carts, worst
         elif cluster[0] == 'R' and (
         (cluster[1] == 'P' and cluster[2] == 'T')
             or
@@ -258,16 +296,19 @@ def testLegalCoda(syllable):
         (cluster[1] == 'S' and cluster[2] == 'T')):
             return True
 
+        # 3-phone clusters beginning with M, e.g., mumps
         elif cluster[0] == 'M' and (
         (cluster[1] == 'P' and cluster[2] == 'T')
             or
         (cluster[1] == 'P' and cluster[2] == 'S')):
             return True
 
+        # 3-phone clusters beginning with N, e.g., thousandth
         elif cluster[0] == 'N' and (
         (cluster[1] == 'D' and cluster[2] == 'TH')):
             return True
 
+        # 3-phone clusters beginning with NG, e.g., angst
         elif cluster[0] == 'NG' and (
         (cluster[1] == 'K' and cluster[2] == 'T')
             or
@@ -278,13 +319,14 @@ def testLegalCoda(syllable):
         (cluster[1] == 'S' and cluster[2] == 'T')):
             return True
 
+        # 3-phone clusters beginning with K, e.g., sixth
         elif (
         (cluster[0] == 'K' and cluster[1] == 'S' and cluster[2] == 'TH')
             or
         (cluster[0] == 'K' and cluster[1] == 'S' and cluster[2] == 'T')):
             return True
 
-    if length == 2: # if instead of elif to check s-, z-, t-, d-appended clusters
+    if length == 2:
         if ((cluster[1] == 'S' and cluster[0] in S_EXTENDED_CODAS)
             or
         (cluster[1] == 'Z' and cluster[0] in Z_EXTENDED_CODAS)
@@ -294,6 +336,7 @@ def testLegalCoda(syllable):
         (cluster[1] == 'D' and cluster[0] in D_EXTENDED_CODAS)):
             length -= 1
 
+        # 2-phone clusters beginning with L, e.g., elk, health
         if cluster[0] == 'L' and (
         cluster[1] in STOPS.difference(['G'])
             or
@@ -304,6 +347,7 @@ def testLegalCoda(syllable):
         cluster[1] in NASALS.difference(['NG'])):
             return True
 
+        # 2-phone clusters beginning with R, e.g., arc, yarn
         elif cluster[0] == 'R' and (
         cluster[1] in STOPS
             or
@@ -316,15 +360,15 @@ def testLegalCoda(syllable):
         cluster[1] == 'L'):
             return True
 
+        # 2-phone clusters beginning with nasals, e.g., bent, ink
         elif cluster[0] == 'M' and cluster[1] in set(['P', 'F', 'TH', 'B']):
             return True
-
         elif cluster[0] == 'N' and cluster[1] in set(['T', 'D', 'CH', 'JH', 'TH', 'S', 'Z', 'F']):
             return True
-
         elif cluster[0] == 'NG' and cluster[1] in set(['K', 'TH', 'G']):
             return True
 
+        # 2-phone clusters beginning with stops, e.g., pact, width
         elif (
         (cluster[0] == 'F' and cluster[1] in set(['T', 'TH']))
             or
