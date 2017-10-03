@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-#
-#
-#
-#
+
+# syllabifyARPA:
+# Syllabify ARPABET transcriptions using General American English syllabification rules
+
+# Vasundhara Gautam
+# October 3rd, 2017
 
 import pandas as pd
 import re
 import logging
-
-logging.basicConfig(filename = 'syllabifier.log',level = logging.WARNING)
 
 # Sets required to check for valid onset and coda clusters
 VOICELESS = set(['K', 'P', 'T', 'F', 'HH', 'S', 'SH', 'TH', 'CH'])
@@ -21,7 +21,7 @@ NASALS = set(['M', 'N', 'NG'])
 APPROXIMANTS = set(['L', 'R', 'W', 'Y'])
 CONSONANTS = STOPS.union(FRICATIVES).union(AFFRICATES).union(NASALS).union(APPROXIMANTS)
 
-S_EXTENDED_CODAS = set(['K', 'P', 'T', 'F', 'TH'])
+S_EXTENDED_CODAS = set(['K', 'P', 'T', 'F', 'TH', 'D', 'NG'])
 Z_EXTENDED_CODAS = set(['G', 'B', 'D', 'DH', 'V', 'M', 'N', 'NG', 'L'])
 
 T_EXTENDED_CODAS = set(['K', 'P', 'F', 'S', 'SH', 'TH', 'CH', 'N'])
@@ -36,18 +36,52 @@ PHONESET = set(['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B',
 # Optional stress markers (0,1,2) after the vowel for flexibility
 VOWELS_REGEX = re.compile(r'(?:AA|AE|AH|AO|AW|AY|EH|ER|EY|IH|IY|OW|OY|UW|UH)[012]?')
 
-def syllabifyARPA(arpa_arr):
+def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
+    """
+    Syllabifies ARPABET transcriptions according to General American English
+    syllabification rules.
+
+    Args:
+        arpa_arr: A string or array of ARPABET phones.
+        return_list: Boolean (default False) to return list of syllable strings
+        silence_warnings: Boolean (default False) to suppress printing to stderr
+
+    Returns:
+        Pandas Series of dtype 'Object' with syllables in each row.
+        If return_list set to True, returns a Python list of strings containing
+        the syllables.
+        In case the input is unsyllabifiable, an empty Series or list is
+        returned.
+
+    Raises:
+        Critical error: Input contains non-ARPABET phonemes.
+        Warning: Clusters with no vowels or bad onsets.
+        Error: Impossible to syllabify according to English rules.
+    """
+
+
+    logging.basicConfig()
+
+    if silence_warnings:
+        logging.raiseExceptions=False
+
+    ret = pd.Series(None)
+    if return_list:
+        ret = []
 
     try:
         arpa_arr = arpa_arr.split() # Allows for phoneme array and string input
     except:
         pass
 
+    for i in range(len(arpa_arr)):
+        arpa_arr[i] = arpa_arr[i].upper()
+
     word = ' '.join(arpa_arr)
 
     if not (testInPhoneset(arpa_arr)):
         logging.critical('Input %s contains non-ARPABET phonemes' % word)
-        return pd.Series(None)
+        return ret
 
     final_arr = []
     temp_arr = []
@@ -63,7 +97,7 @@ def syllabifyARPA(arpa_arr):
     for i in range(len(temp_arr)):
         if len(final_arr) < 1:
             logging.warning('Input error - no vowel in %s' % word)
-            return pd.Series(None)
+            return ret
         final_arr[-1].append(temp_arr[i])
 
     # All onsets are maximized, some are illegal - fixing that
@@ -71,7 +105,7 @@ def syllabifyARPA(arpa_arr):
         while testLegalOnset(final_arr[i]):
             if i == 0:
                 logging.warning('Bad onset cluster in %s' % word)
-                return pd.Series(None)
+                return ret
             c = testLegalOnset(final_arr[i])
             final_arr[i].remove(c)
             final_arr[i-1].append(c)
@@ -80,9 +114,13 @@ def syllabifyARPA(arpa_arr):
         if not testLegalCoda(final_arr[i]):
             logging.error('Impossible to syllabify %s according to English '
                           'syllabification rules.' % word)
-            return pd.Series(None)
+            return ret
 
-    return pd.Series([' '.join(syllable) for syllable in final_arr])
+    ret = pd.Series([' '.join(syllable) for syllable in final_arr])
+    if return_list:
+        ret = list(ret)
+
+    return ret
 
 def testInPhoneset(arr):
     for i in range(len(arr)):
@@ -171,7 +209,11 @@ def testLegalCoda(syllable):
         # 4-phoneme codas have to have /s/ or /z/ as an appendix
         if ((cluster[3] == 'S' and cluster[2] in S_EXTENDED_CODAS)
             or
-        (cluster[3] == 'Z' and cluster[2] in Z_EXTENDED_CODAS)):
+        (cluster[3] == 'Z' and cluster[2] in Z_EXTENDED_CODAS)
+            or
+        (cluster[3] == 'T' and cluster[2] in T_EXTENDED_CODAS)
+            or
+        (cluster[3] == 'D' and cluster[2] in D_EXTENDED_CODAS)):
             length -= 1
         else:
             return False
@@ -288,9 +330,9 @@ def testLegalCoda(syllable):
             or
         (cluster[0] == 'S' and cluster[1] in set(['P', 'T', 'K']))
             or
-        (cluster[0] == 'P' and cluster[1] in set(['T', 'TH', 'S']))
+        (cluster[0] == 'P' and cluster[1] in set(['T', 'TH', 'S', 'F']))
             or
-        (cluster[0] == 'K' and cluster[1] in set(['T', 'S']))
+        (cluster[0] == 'K' and cluster[1] in set(['T', 'S', 'SH']))
             or
         (cluster[0] == 'T' and cluster[1] in set(['S', 'TH']))
             or
@@ -302,5 +344,4 @@ def testLegalCoda(syllable):
         if cluster[0] not in set(['HH', 'W', 'Y']):
             return True
 
-    print(cluster)
     return False
