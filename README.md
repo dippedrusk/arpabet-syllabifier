@@ -4,9 +4,9 @@ syllabifyARPA is a function that will take an ARPABET transcription in array or 
 
 ## Dependencies
 
-* Python 3
-* Pandas 0.20
-* Jupyter (if you want to run the test notebook locally)
+* python>=3.5
+* pandas>=0.20.0
+* jupyter>=1.0.0 (only if you want to run the test notebook locally)
 
 ## How to Use
 
