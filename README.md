@@ -1,6 +1,9 @@
-# ARPABET Syllabifier
+# Syllabifier
 
-syllabifyARPA is a function that will take an ARPABET transcription in array or string form and return a Pandas Series or Python list with the syllables chunked.
+Syllabifier is a Python module to syllabify your English pronunciations. Currently only
+ARPABET syllabification is supported.
+It will take an ARPABET transcription in array or string form and return a Pandas Series or Python
+list with the syllables chunked.
 
 ## Dependencies
 
@@ -10,8 +13,8 @@ syllabifyARPA is a function that will take an ARPABET transcription in array or 
 
 ## How to Use
 
-* Install `syllabifyARPA` by running `python setup.py install`
-* Import `from syllabifyARPA import syllabifyARPA`.
+* Install `syllabifier` by running `python setup.py install`
+* Import the function `from syllabifier import syllabifyARPA`.
 * Function parameters
   * A 2-letter ARPABET transcription in string form (with phones delimited by spaces) or as a Python list (stress markers on the vowels are optional)
   * (Optional) bool return_list to return in Python list form instead of the default Pandas Series
@@ -19,7 +22,7 @@ syllabifyARPA is a function that will take an ARPABET transcription in array or 
 * Sample calls are in the Jupyter Notebook test.ipynb, using CMU Pronouncing Dictionary data.
 
 ## Contents
-* **syllabifyARPA.py**: Core module of this repository which contains all the code that syllabifies an ARPABET transcription
+* **syllabifier.py**: Core module of this repository which contains all the code that syllabifies an ARPABET transcription
 * **tests/test.ipynb**: Jupyter Notebook demonstrating sample calls to syllabifyARPA using CMUDict data
 * **tests/cmudict.txt**: Very large text file containing over 100,000 ARPABET-syllabified English words
 * **tests/cmusubset.txt**: Subset of ~60 words and transcriptions from the CMU Dictionary text file for testing convenience

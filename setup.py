@@ -1,19 +1,18 @@
-import os
-import pathlib
+from pathlib import Path
 import setuptools
 
-pkg_root = os.path.abspath(os.path.dirname(__file__))
+pkg_root = Path(__file__).resolve().parent
 
-with open(os.path.join(pkg_root, 'README.md')) as f:
+with open(pkg_root.joinpath('README.md')) as f:
     long_description = f.read()
 
-with open(os.path.join(pkg_root, 'requirements.txt')) as f:
+with open(pkg_root.joinpath('requirements.txt')) as f:
     requirements = [r.strip() for r in f.readlines()]
 
 setuptools.setup(
-    name='syllabifyARPA',
+    name='syllabifier',
     version='0.0.1',
-    description='syllabifyARPA will chunk your English ARPABET pronunciations into syllables',
+    description='syllabifier chunks your English ARPABET pronunciations into syllables',
     long_description=long_description,
     packages=setuptools.find_packages(exclude=('tests',)),
     python_requires='>= 3.5',
