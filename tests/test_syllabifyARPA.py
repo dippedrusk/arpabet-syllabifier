@@ -1,4 +1,4 @@
-from syllabifyARPA import syllabifyARPA
+from syllabifier import syllabifyARPA
 
 def test_syllabifyARPA():
     test_string = 'HH AE NG M AE N'
