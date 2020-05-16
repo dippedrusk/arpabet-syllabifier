@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import itertools
 from syllabifier import syllabifyARPA
-from syllabifier import CONSONANTS
-from syllabifier import PHONESET
+from syllabifier.constants import CONSONANTS
+from syllabifier.constants import PHONESET
 
 VOWELS = PHONESET - CONSONANTS
 legal_codas = CONSONANTS - {'HH', 'W', 'Y'}

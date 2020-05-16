@@ -65,7 +65,7 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
         if not silence_warnings:
             raise ValueError(string)
 
-    ret = pd.Series(None)
+    ret = [] #pd.Series(None)
     if return_list:
         ret = []
 
@@ -116,7 +116,8 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
                           'syllabification rules.' % word)
             return ret
 
-    ret = pd.Series([' '.join(syllable) for syllable in final_arr])
+    #ret = pd.Series([' '.join(syllable) for syllable in final_arr])
+    ret = [' '.join(syllable) for syllable in final_arr]
     if return_list:
         ret = list(ret)
 

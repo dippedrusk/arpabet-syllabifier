@@ -1,0 +1,1 @@
+from syllabifier.syllabifyARPA import syllabifyARPA
