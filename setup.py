@@ -16,6 +16,7 @@ setuptools.setup(
     long_description=long_description,
     packages=setuptools.find_packages(exclude=('tests',)),
     python_requires='>= 3.5',
+    setup_requires=requirements,
     install_requires=requirements,
     tests_require='pytest',
     author='Vasundhara Gautam',

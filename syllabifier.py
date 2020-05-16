@@ -3,6 +3,7 @@
 # syllabifyARPA:
 # Syllabify ARPABET transcriptions using General American English syllabification rules
 # as found in https://en.wikipedia.org/wiki/English_phonology#Syllable_structure
+# TODO:DOC caveat with morphological and word boundaries (e.g., mistreat, sesame street)
 
 # Vasundhara Gautam
 # October 3rd, 2017
