@@ -8,7 +8,6 @@
 # Vasundhara Gautam
 # October 3rd, 2017
 
-import pandas as pd
 import re
 import sys
 
@@ -38,7 +37,7 @@ PHONESET = set(['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B',
 # Optional stress markers (0,1,2) after the vowel for flexibility
 VOWELS_REGEX = re.compile(r'(?:AA|AE|AH|AO|AW|AY|EH|ER|EY|IH|IY|OW|OY|UW|UH)[012]?')
 
-def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
+def syllabifyARPA(arpa_arr, silence_warnings=False):
     """
     Syllabifies ARPABET transcriptions according to General American English
     syllabification rules.
@@ -46,15 +45,11 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
     Args:
         arpa_arr: A string or array of ARPABET phones with optional stress markers
         on the vowels.
-        return_list: Boolean (default False) to return list of syllable strings
         silence_warnings: Boolean (default False) to suppress ValueErrors
 
     Returns:
-        Pandas Series of dtype 'Object' with syllables in each row.
-        If return_list set to True, returns a Python list of strings containing
-        the syllables.
-        In case the input is unsyllabifiable, an empty Series or list is
-        returned.
+        List of strings with syllables in each row.
+        In case the input is unsyllabifiable, an empty list is returned.
 
     Raises:
         ValueError if input contains non-ARPABET phonemes, no vowels or if it
@@ -65,9 +60,7 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
         if not silence_warnings:
             raise ValueError(string)
 
-    ret = [] #pd.Series(None)
-    if return_list:
-        ret = []
+    ret = []
 
     try:
         arpa_arr = arpa_arr.split() # Allows for phoneme array and string input
@@ -116,10 +109,7 @@ def syllabifyARPA(arpa_arr, return_list=False, silence_warnings=False):
                           'syllabification rules.' % word)
             return ret
 
-    #ret = pd.Series([' '.join(syllable) for syllable in final_arr])
     ret = [' '.join(syllable) for syllable in final_arr]
-    if return_list:
-        ret = list(ret)
 
     return ret
 
