@@ -1,12 +1,12 @@
-from pathlib import Path
+import os
 import setuptools
 
-pkg_root = Path(__file__).resolve().parent
+pkg_root = os.path.abspath(os.path.dirname(__file__))
 
-with open(pkg_root.joinpath('README.md')) as f:
+with open(os.path.join(pkg_root, 'README.md'), 'r', encoding='utf-8') as f:
     long_description = f.read()
 
-with open(pkg_root.joinpath('requirements.txt')) as f:
+with open(os.path.join(pkg_root, 'requirements.txt'), 'r', encoding='utf-8') as f:
     requirements = [r.strip() for r in f.readlines()]
 
 setuptools.setup(
@@ -14,8 +14,10 @@ setuptools.setup(
     version='0.0.1',
     description='syllabifier chunks your English ARPABET pronunciations into syllables',
     long_description=long_description,
-    packages=setuptools.find_packages(exclude=('tests',)),
+    packages=setuptools.find_packages(where='src', exclude=('tests',)),
+    package_dir={'': 'src'},
     python_requires='>= 3.5',
+    setup_requires=requirements,
     install_requires=requirements,
     tests_require='pytest',
     author='Vasundhara Gautam',

@@ -7,8 +7,13 @@ __pycache__
 # Jupyter-notebook checkpoints
 .ipynb_checkpoints
 
-# Build stuff
+# CI-related stuff
 build/
 develop-eggs/
 dist/
-*.egg-info/
+**/*.egg-info/
+.eggs/
+.nox/
+
+# Virtual environments
+venv/
