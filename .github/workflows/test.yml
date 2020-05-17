@@ -29,3 +29,24 @@ jobs:
     - name: Test with nox
       run: |
         nox
+
+  coveralls:
+    name: Test coverage
+
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install coverage coveralls pytest
+    - name: Run coverage
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      run: |
+        coverage run --source=src/ -m pytest tests/
+        coveralls
