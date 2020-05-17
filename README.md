@@ -2,13 +2,12 @@
 
 Syllabifier is a Python module to syllabify your English pronunciations. Currently only
 ARPABET syllabification is supported.
-It will take an ARPABET transcription in array or string form and return a Pandas Series or Python
-list with the syllables chunked.
+It will take an ARPABET transcription in array or string form and return a list with the syllables
+chunked.
 
 ## Dependencies
 
 * python>=3.5
-* pandas>=0.20.0
 * jupyter>=1.0.0 (only if you want to run the test notebook locally)
 
 ## How to Use
@@ -17,7 +16,6 @@ list with the syllables chunked.
 * Import the function `from syllabifier import syllabifyARPA`.
 * Function parameters
   * A 2-letter ARPABET transcription in string form (with phones delimited by spaces) or as a Python list (stress markers on the vowels are optional)
-  * (Optional) bool return_list to return in Python list form instead of the default Pandas Series
   * (Optional) bool silence_warnings to suppress ValueErrors thrown because of unsyllabifiable input
 * Sample calls are in the Jupyter Notebook test.ipynb, using CMU Pronouncing Dictionary data.
 
@@ -26,7 +24,7 @@ list with the syllables chunked.
 * **tests/test.ipynb**: Jupyter Notebook demonstrating sample calls to syllabifyARPA using CMUDict data
 * **tests/cmudict.txt**: Very large text file containing over 100,000 ARPABET-syllabified English words
 * **tests/cmusubset.txt**: Subset of ~60 words and transcriptions from the CMU Dictionary text file for testing convenience
-* **tests/test_syllabifyARPA.py**: Unit and integration tests for the package
+* **tests/test_syllabifier.py**: Unit and integration tests for the package
 
 ## ARPABET
 ARPABET is a method of transcribing General American English phonetically with only ASCII characters. Refer [here](https://en.wikipedia.org/wiki/ARPABET) for a table of mappings between IPA and ARPABET. This syllabifier accepts only the 2-letter ARPABET codes but case does not matter.
