@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import re
 
 # Sets required to check for valid onset and coda clusters
