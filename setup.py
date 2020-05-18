@@ -9,9 +9,12 @@ with open(os.path.join(pkg_root, 'README.md'), 'r', encoding='utf-8') as f:
 with open(os.path.join(pkg_root, 'requirements.txt'), 'r', encoding='utf-8') as f:
     requirements = [r.strip() for r in f.readlines()]
 
+with open(os.path.join(pkg_root, 'VERSION'), 'r', encoding='utf-8') as f:
+    VERSION = f.read().strip()
+
 setuptools.setup(
     name='syllabifier',
-    version='0.0.1',
+    version=VERSION,
     description='syllabifier chunks your English ARPABET pronunciations into syllables',
     long_description=long_description,
     packages=setuptools.find_packages(where='src', exclude=('tests',)),
