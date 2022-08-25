@@ -22,9 +22,7 @@ setuptools.setup(
     tests_require='pytest',
     include_package_data=True,
     platforms='any',
-    license='MIT',
     classifiers=[
-        'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
