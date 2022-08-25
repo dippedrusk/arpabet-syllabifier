@@ -20,8 +20,6 @@ setuptools.setup(
     setup_requires=requirements,
     install_requires=requirements,
     tests_require='pytest',
-    author='Vasundhara Gautam',
-    author_email='vasundhara131719@gmail.com',
     include_package_data=True,
     platforms='any',
     license='MIT',
