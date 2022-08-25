@@ -23,6 +23,11 @@ from syllabifier.constants import D_EXTENDED_CODAS
 from syllabifier.constants import PHONESET
 from syllabifier.constants import VOWELS_REGEX
 
+def handleError(string, silence_warnings):
+    if not silence_warnings:
+        raise ValueError(string)
+
+
 def syllabifyARPA(arpa_arr, silence_warnings=False):
     """
     Syllabifies ARPABET transcriptions according to General American English
@@ -42,10 +47,6 @@ def syllabifyARPA(arpa_arr, silence_warnings=False):
         cannot be syllabified according to English syllabification rules.
     """
 
-    def handleError(string):
-        if not silence_warnings:
-            raise ValueError(string)
-
     ret = []
 
     try:
@@ -59,7 +60,7 @@ def syllabifyARPA(arpa_arr, silence_warnings=False):
     word = ' '.join(arpa_arr)
 
     if not (testInPhoneset(arpa_arr)):
-        handleError('Input %s contains non-ARPABET phones' % word)
+        handleError(f'Input {word} contains non-ARPABET phones', silence_warnings)
         return ret
 
     # Word boundaries are necessary for appendices
@@ -76,20 +77,18 @@ def syllabifyARPA(arpa_arr, silence_warnings=False):
             syllable_under_construction = []
 
     if len(candidate_syllables) < 1:
-        handleError('Input error - no vowel in %s' % word)
+        handleError(f'Input error - no vowel in {word}', silence_warnings)
         return ret
 
     # Handle potential remaining coda consonants
     for phone in syllable_under_construction:
         candidate_syllables[-1].append(phone)
 
-    print(candidate_syllables)
-
     # All onsets are maximized, some are illegal - fixing that
     for i in range(len(candidate_syllables)):
         while testLegalOnset(candidate_syllables[i]):
             if i == 0:
-                handleError('Bad onset cluster in %s' % word)
+                handleError('Bad onset cluster in {word}', silence_warnings)
                 return ret
             c = testLegalOnset(candidate_syllables[i])
             candidate_syllables[i].remove(c)
@@ -97,12 +96,12 @@ def syllabifyARPA(arpa_arr, silence_warnings=False):
 
     for i in range(len(candidate_syllables)):
         if not testLegalCoda(candidate_syllables[i]):
-            handleError('Bad coda cluster in %s' % word)
+            handleError('Bad coda cluster in {word}', silence_warnings)
             return ret
 
     # probably need one last check here to check for rogue /s/ phones
 
-    ret = [' '.join(syllable) for syllable in candidate_syllables if syllable != '#']
+    ret = [' '.join([phone for phone in syllable if phone != '#']) for syllable in candidate_syllables]
 
     return ret
 
@@ -137,30 +136,23 @@ def testLegalOnset(syllable):
     """
 
     cluster = []
-
     for i in range(len(syllable)):
         if re.match(VOWELS_REGEX, syllable[i]):
             break
         else:
             cluster.append(syllable[i])
 
+    orig_cluster = cluster
+
+    if '#' in cluster:
+        if len(cluster) >= 2 and cluster[1] == 'S':
+            cluster = cluster[2:]
+        else:
+            cluster = cluster[1:]
     length = len(cluster)
-
-    if length > 3:
+    
+    if len(cluster) >= 3:
         return cluster[0]
-
-    elif length == 3:
-        # Only s-clusters can be length 3
-        if not (cluster[0] == 'S'):
-            return cluster[0]
-        # Clusters beginning with s can only be of the forms
-        # s-voiceless_stop-approximant or s-voiceless_fricative-r
-        elif not (
-        (cluster[1] in VOICELESS.intersection(STOPS) and cluster[2] in APPROXIMANTS)
-            or
-        (cluster[1] in VOICELESS.intersection(FRICATIVES) and cluster[2] == 'R')):
-            return cluster[0]
-
     elif length == 2:
         if not (
         # Valid length-2 consonant clusters are consonant-Y, stop-approximant
@@ -192,6 +184,10 @@ def testLegalOnset(syllable):
         # Single-consonant-onsets are valid except for NG
         return cluster[0]
 
+    for current_phone, next_phone in zip(orig_cluster, orig_cluster[1:]):
+        if current_phone == next_phone:
+            return orig_cluster[0]
+
     return None
 
 def testLegalCoda(syllable):
@@ -215,6 +211,8 @@ def testLegalCoda(syllable):
         if re.match(VOWELS_REGEX, syllable[i]):
             postvowel = True
 
+    if '#' in cluster:
+        cluster = cluster[:-1]
     length = len(cluster)
 
     if length == 0:

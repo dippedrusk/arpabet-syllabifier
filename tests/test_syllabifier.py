@@ -206,6 +206,12 @@ def test_long_words():
         assert syllabifyARPA(pron) == syllabification
 
 
+def test_miscellaneous_edge_cases():
+    unsyllabifiables = ['S S T R AO NG', 'S S OY', 'S S T OY K', 'S Z AA']
+    for unsyllabifiable in unsyllabifiables:
+        assert not syllabifyARPA(unsyllabifiable, silence_warnings=True)
+
+
 # def test_word_boundaries():
 # TODO:ADD this feature
 #        'S W IY P S T EY K S': ['S W IY P', 'S T EY K S']
