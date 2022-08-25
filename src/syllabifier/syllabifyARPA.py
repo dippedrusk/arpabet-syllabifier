@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 
 # syllabifyARPA:
-# Syllabify ARPABET transcriptions using General American English syllabification rules
-# as found in https://en.wikipedia.org/wiki/English_phonology#Syllable_structure
 # TODO:DOC caveat with morphological and word boundaries (e.g., mistreat, sesame street)
 
 # Vasundhara Gautam
 # October 3rd, 2017
 
 import re
-import sys
 
 from syllabifier.constants import VOICELESS
 from syllabifier.constants import VOICED
@@ -53,7 +50,7 @@ def syllabifyARPA(arpa_arr, silence_warnings=False):
 
     try:
         arpa_arr = arpa_arr.split() # Allows for phoneme array and string input
-    except:
+    except AttributeError:
         pass
 
     for i in range(len(arpa_arr)):
@@ -65,39 +62,47 @@ def syllabifyARPA(arpa_arr, silence_warnings=False):
         handleError('Input %s contains non-ARPABET phones' % word)
         return ret
 
-    final_arr = []
-    temp_arr = []
+    # Word boundaries are necessary for appendices
+    arpa_arr = ['#'] + arpa_arr + ['#']
+
+    candidate_syllables = []
+    syllable_under_construction = []
 
     # Append till and including vowels
     for i in range(len(arpa_arr)):
-        temp_arr.append(arpa_arr[i])
+        syllable_under_construction.append(arpa_arr[i])
         if re.match(VOWELS_REGEX, arpa_arr[i]):
-            final_arr.append(temp_arr)
-            temp_arr = []
+            candidate_syllables.append(syllable_under_construction)
+            syllable_under_construction = []
+
+    if len(candidate_syllables) < 1:
+        handleError('Input error - no vowel in %s' % word)
+        return ret
 
     # Handle potential remaining coda consonants
-    for i in range(len(temp_arr)):
-        if len(final_arr) < 1:
-            handleError('Input error - no vowel in %s' % word)
-            return ret
-        final_arr[-1].append(temp_arr[i])
+    for phone in syllable_under_construction:
+        candidate_syllables[-1].append(phone)
+
+    print(candidate_syllables)
 
     # All onsets are maximized, some are illegal - fixing that
-    for i in range(len(final_arr)):
-        while testLegalOnset(final_arr[i]):
+    for i in range(len(candidate_syllables)):
+        while testLegalOnset(candidate_syllables[i]):
             if i == 0:
                 handleError('Bad onset cluster in %s' % word)
                 return ret
-            c = testLegalOnset(final_arr[i])
-            final_arr[i].remove(c)
-            final_arr[i-1].append(c)
+            c = testLegalOnset(candidate_syllables[i])
+            candidate_syllables[i].remove(c)
+            candidate_syllables[i-1].append(c)
 
-    for i in range(len(final_arr)):
-        if not testLegalCoda(final_arr[i]):
+    for i in range(len(candidate_syllables)):
+        if not testLegalCoda(candidate_syllables[i]):
             handleError('Bad coda cluster in %s' % word)
             return ret
 
-    ret = [' '.join(syllable) for syllable in final_arr]
+    # probably need one last check here to check for rogue /s/ phones
+
+    ret = [' '.join(syllable) for syllable in candidate_syllables if syllable != '#']
 
     return ret
 

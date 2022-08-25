@@ -192,6 +192,7 @@ def test_s_clusters():
 
 def test_long_words():
     prons_syllabified = {
+        # TODO: CHECK speaker intuitions on the s-clusters in these
         'AH S F IH K S IY EY T AH D': ['AH', 'S F IH K', 'S IY', 'EY', 'T AH D'],
         'M AY K R AH S K AA P IH K': ['M AY', 'K R AH', 'S K AA', 'P IH K'],
         'N Y UH M AE T IH K S': ['N Y UH', 'M AE', 'T IH K S'],
