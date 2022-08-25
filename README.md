@@ -1,6 +1,6 @@
 # Syllabifier
 
-[![Build Status](https://img.shields.io/github/workflow/status/vgautam/arpabet-syllabifier/Test/master)](https://coveralls.io/github/vgautam/arpabet-syllabifier?branch=master) [![Coverage Status](https://coveralls.io/repos/github/vgautam/arpabet-syllabifier/badge.svg?branch=master)](https://coveralls.io/github/vgautam/arpabet-syllabifier?branch=master)
+[![Build Status](https://img.shields.io/github/workflow/status/vgautam/arpabet-syllabifier/Test/main)](https://coveralls.io/github/vgautam/arpabet-syllabifier?branch=main) [![Coverage Status](https://coveralls.io/repos/github/vgautam/arpabet-syllabifier/badge.svg?branch=main)](https://coveralls.io/github/vgautam/arpabet-syllabifier?branch=main)
 
 Syllabifier is a Python module to syllabify your English pronunciations. Currently only
 ARPABET syllabification is supported.
